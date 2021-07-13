@@ -1,0 +1,179 @@
+一般项目架构使用的是单个 store + 初始化时会生成的 rootReducer(这个reducer里只有公用的reducer)
+  需要将所有reducer  都引入到rootReducer
+  
+如果需要使用 - 路由懒加载代码分割 - 的模式，那么会导致动态加载的业务模块对应的 reducer 不存在，所以会需要将当前 store 进行合并且重新注入，让业务模块的reducer 可以存在
+项目根页面 引入 store
+import { Provider } from "react-redux";
+import store from "./reducers";
+
+
+const render = () => {
+  const App = require("./App").default;
+  ReactDOM.render(
+    <Provider store={store}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </Provider>,
+    document.getElementById("root")
+  );
+};
+
+
+index.js // reducer
+import { configureStore, combineReducers, Reducer } from '@reduxjs/toolkit';
+import rootReducer, { staticReducers } from './rootReducer';
+						//用户信息状态
+						// store conf
+const store = configureStore({
+  reducer: rootReducer,
+  devTools: process.env.NODE_ENV !== 'production',
+});
+// 暴露一个函数 给外面懒加载 组件注入
+export function injectReducer<State>(key: string, reducer: Reducer<State>) {
+  asyncReducers[key] = reducer;
+  const newRootReducer = combineReducers({
+    ...staticReducers,
+    ...asyncReducers,
+  });
+  store.replaceReducer(newRootReducer);
+}
+// 普通 dispatch
+export type AppDispatch = typeof store.dispatch;
+
+// 每当我们需要访问 Redux 存储状态时（mapState 函数 | useSelector 选择器）
+export type RootState = ReturnType<typeof rootReducer>;
+
+// thunk type
+// export type AppThunk = ThunkAction<void, RootState, unknown, Action<string>>;
+
+export default store;
+
+
+configureStore()
+
+combineReducers()
+
+createSlice()
+
+createAsyncThunk()
+
+使用步骤
+
+一、 index.js 中 引入并包裹
+import { Provider } from 'react-redux'
+import store from './reducers'
+  <Provider store={store}>
+        <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    </Provider>
+
+二、创建 reducers 文件夹下 index.js
+此处可以进行分模块注入 ，分模块注入
+重要API store.replaceReducer()
+
+   import { configureStore, combineReducers } from '@reduxjs/toolkit'
+	
+   inport demo from './demo'
+   const rootReducer = combineReducers({ demo })
+   const store = configureStore({ reducer : rootReducer })
+   export type RootState = ReturnType<typeof rootReducer>;
+   export default store;
+
+
+三 、 demo.js
+   import {createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+	const initialState={
+	    str1 : '',
+	    str2 : ''
+	};
+
+export const setData = createAsyncThunk (
+
+  'qwe/setData',
+
+    ()=>{ 
+
+            return 'we'
+
+        }
+
+)
+
+const b = createSlice({
+
+    name :'asd',
+
+    initialState,
+
+    reducers:{},
+
+    extraReducers:(bui)=>{
+
+        bui.addCase(setData.pending, (state)=>{
+
+            state.str1 = '1'
+
+        });
+
+        bui.addCase(setData.fulfilled, (state,action)=>{
+
+            console.log(action,'------')
+
+            state.str1 = action.payload || ''
+
+        });
+
+        bui.addCase(setData.rejected, (state)=>{
+
+            state.str1 = '3'
+
+        });
+
+    }
+
+})
+
+export default b.reducer;
+
+// export const bActions = b.actions;  // 暂时还没理解用处 
+
+四、 组件中使用
+
+i
+
+
+import './App.css';
+
+// import { getUserInfo } from './reducers/userInfo';
+
+import { setData } from './reducers/demo';
+
+import { RootState } from './reducers';
+
+function App() {
+
+  const  dispatch  = useDispatch();
+
+  const a = useSelector((state : RootState )=> state.demo.str1)
+
+  useEffect(()=>{
+
+    dispatch(setData())
+
+  },[dispatch]);
+
+  return (
+
+    <div className="App">
+
+        {a}
+
+    </div>
+
+  );
+
+}
+
+export default App;
